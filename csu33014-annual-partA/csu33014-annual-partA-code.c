@@ -104,8 +104,24 @@ void partA_routine2(float *restrict a, float *restrict b, int size)
 // in the following, size can have any positive value
 void partA_vectorized2(float *restrict a, float *restrict b, int size)
 {
-  // replace the following code with vectorized code
-  for (int i = 0; i < size; i++)
+  __m128 a4, b4, one4;
+  float one = 1;
+  one4 = _mm_load1_ps(&one);
+  int size_remainder = size % 4; // the remaining of number of elements after our vectorized runs
+  int i;
+  for (i = 0; i < size - size_remainder; i += 4)
+  {
+    // load four elements from b, add 1, divide result by one
+    b4 = _mm_loadu_ps(&b[i]);
+    b4 = _mm_add_ps(b4, one4);
+    b4 = _mm_div_ps(one4, b4);
+    // subtract result from one
+    a4 = _mm_sub_ps(one4, b4);
+    // store back to a
+    _mm_storeu_ps(&a[i], a4);
+  }
+  // for the reamining 0, 1, 2 or 3 products between size+size_remainder and size
+  for (i = size - size_remainder; i < size; i++)
   {
     a[i] = 1 - (1.0 / (b[i] + 1.0));
   }
