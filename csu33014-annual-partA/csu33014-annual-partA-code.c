@@ -144,8 +144,29 @@ void partA_routine3(float *restrict a, float *restrict b, int size)
 // in the following, size can have any positive value
 void partA_vectorized3(float *restrict a, float *restrict b, int size)
 {
+
+  __m128 a4, b4, zero4, less4, greater_equal4;
+  float zero = 0;
+  zero4 = _mm_load1_ps(&zero);
+  int size_remainder = size % 4; // the remaining of number of elements after our vectorized runs
+  int i;
+  for (i = 0; i < size - size_remainder; i += 4)
+  {
+    a4 = _mm_loadu_ps(&a[i]);
+    b4 = _mm_loadu_ps(&b[i]);
+    // if a[i] < 0, we need to store b[i]
+    less4 = _mm_cmplt_ps(a4, zero4);
+    less4 =_mm_and_ps(b4, less4);
+    // if a >= 0, we need to store a[i]
+    greater_equal4 = _mm_cmpge_ps(a4, zero4);
+    greater_equal4 = _mm_and_ps(a4, greater_equal4);
+    // store the respective a[i]s and b[i]s into one vector
+    b4 = _mm_add_ps(less4, greater_equal4);
+    // write vector contents to memory
+    _mm_storeu_ps(&a[i], b4);
+  }
   // replace the following code with vectorized code
-  for (int i = 0; i < size; i++)
+  for (i = size - size_remainder; i < size; i++)
   {
     if (a[i] < 0.0)
     {
