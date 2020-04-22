@@ -12,7 +12,6 @@
 // itself or a value directly derived from it (such as pointer + 1)
 // will be used to access the object to which it points".
 
-
 #include <immintrin.h>
 #include <stdio.h>
 
@@ -21,19 +20,23 @@
 /****************  routine 0 *******************/
 
 // Here is an example routine that should be vectorized
-void partA_routine0(float * restrict a, float * restrict b,
-		    float * restrict c) {
-  for (int i = 0; i < 1024; i++ ) {
+void partA_routine0(float *restrict a, float *restrict b,
+                    float *restrict c)
+{
+  for (int i = 0; i < 1024; i++)
+  {
     a[i] = b[i] * c[i];
   }
 }
 
 // here is a vectorized solution for the example above
-void partA_vectorized0(float * restrict a, float * restrict b,
-		    float * restrict c) {
+void partA_vectorized0(float *restrict a, float *restrict b,
+                       float *restrict c)
+{
   __m128 a4, b4, c4;
-  
-  for (int i = 0; i < 1024; i = i+4 ) {
+
+  for (int i = 0; i < 1024; i = i + 4)
+  {
     b4 = _mm_loadu_ps(&b[i]);
     c4 = _mm_loadu_ps(&c[i]);
     a4 = _mm_mul_ps(b4, c4);
@@ -44,23 +47,44 @@ void partA_vectorized0(float * restrict a, float * restrict b,
 /***************** routine 1 *********************/
 
 // in the following, size can have any positive value
-float partA_routine1(float * restrict a, float * restrict b,
-		     int size) {
+float partA_routine1(float *restrict a, float *restrict b,
+                     int size)
+{
   float sum = 0.0;
-  
-  for ( int i = 0; i < size; i++ ) {
+
+  for (int i = 0; i < size; i++)
+  {
     sum = sum + a[i] * b[i];
   }
   return sum;
 }
 
 // insert vectorized code for routine1 here
-float partA_vectorized1(float * restrict a, float * restrict b,
-		     int size) {
-  // replace the following code with vectorized code
+float partA_vectorized1(float *restrict a, float *restrict b,
+                        int size)
+{
+  __m128 a4, b4, sum4, a4b4;
+  float temp[4];
+  int size_remainder = size % 4; // the remaining of number of elements after our vectorized runs
   float sum = 0.0;
-  
-  for ( int i = 0; i < size; i++ ) {
+  int i;
+  for (i = 0; i < size - size_remainder; i += 4)
+  {
+    // load sum into vector
+    sum4 = _mm_load1_ps(&sum);
+    // load four a values and four b values into vector
+    a4 = _mm_loadu_ps(&a[i]);
+    b4 = _mm_loadu_ps(&b[i]);
+    // multiply a[i] by b[i]
+    a4b4 = _mm_mul_ps(a4, b4);
+    // extract the products
+    _mm_storeu_ps(&temp[0], a4b4);
+    // add products to sum in the same order that they were added in sequential loop, ensuring no difference in results
+    sum = ((((sum + temp[3]) + temp[2]) + temp[1]) + temp[0]);
+  }
+  // add the reamining 0, 1, 2 or 3 products between size+size_remainder and size
+  for (i = size - size_remainder; i < size; i++)
+  {
     sum = sum + a[i] * b[i];
   }
   return sum;
@@ -69,36 +93,46 @@ float partA_vectorized1(float * restrict a, float * restrict b,
 /******************* routine 2 ***********************/
 
 // in the following, size can have any positive value
-void partA_routine2(float * restrict a, float * restrict b, int size) {
-  for ( int i = 0; i < size; i++ ) {
-    a[i] = 1 - (1.0/(b[i]+1.0));
+void partA_routine2(float *restrict a, float *restrict b, int size)
+{
+  for (int i = 0; i < size; i++)
+  {
+    a[i] = 1 - (1.0 / (b[i] + 1.0));
   }
 }
 
 // in the following, size can have any positive value
-void partA_vectorized2(float * restrict a, float * restrict b, int size) {
+void partA_vectorized2(float *restrict a, float *restrict b, int size)
+{
   // replace the following code with vectorized code
-  for ( int i = 0; i < size; i++ ) {
-    a[i] = 1 - (1.0/(b[i]+1.0));
+  for (int i = 0; i < size; i++)
+  {
+    a[i] = 1 - (1.0 / (b[i] + 1.0));
   }
 }
 
 /******************** routine 3 ************************/
 
 // in the following, size can have any positive value
-void partA_routine3(float * restrict a, float * restrict b, int size) {
-  for ( int i = 0; i < size; i++ ) {
-    if ( a[i] < 0.0 ) {
+void partA_routine3(float *restrict a, float *restrict b, int size)
+{
+  for (int i = 0; i < size; i++)
+  {
+    if (a[i] < 0.0)
+    {
       a[i] = b[i];
     }
   }
 }
 
 // in the following, size can have any positive value
-void partA_vectorized3(float * restrict a, float * restrict b, int size) {
+void partA_vectorized3(float *restrict a, float *restrict b, int size)
+{
   // replace the following code with vectorized code
-  for ( int i = 0; i < size; i++ ) {
-    if ( a[i] < 0.0 ) {
+  for (int i = 0; i < size; i++)
+  {
+    if (a[i] < 0.0)
+    {
       a[i] = b[i];
     }
   }
@@ -108,69 +142,80 @@ void partA_vectorized3(float * restrict a, float * restrict b, int size) {
 
 // hint: one way to vectorize the following code might use
 // vector shuffle operations
-void partA_routine4(float * restrict a, float * restrict b,
-		       float * restrict c) {
-  for ( int i = 0; i < 2048; i = i+2  ) {
-    a[i] = b[i]*c[i] - b[i+1]*c[i+1];
-    a[i+1] = b[i]*c[i+1] + b[i+1]*c[i];
+void partA_routine4(float *restrict a, float *restrict b,
+                    float *restrict c)
+{
+  for (int i = 0; i < 2048; i = i + 2)
+  {
+    a[i] = b[i] * c[i] - b[i + 1] * c[i + 1];
+    a[i + 1] = b[i] * c[i + 1] + b[i + 1] * c[i];
   }
 }
 
-void partA_vectorized4(float * restrict a, float * restrict b,
-		       float * restrict  c) {
+void partA_vectorized4(float *restrict a, float *restrict b,
+                       float *restrict c)
+{
   // replace the following code with vectorized code
-  for ( int i = 0; i < 2048; i = i+2  ) {
-    a[i] = b[i]*c[i] - b[i+1]*c[i+1];
-    a[i+1] = b[i]*c[i+1] + b[i+1]*c[i];
+  for (int i = 0; i < 2048; i = i + 2)
+  {
+    a[i] = b[i] * c[i] - b[i + 1] * c[i + 1];
+    a[i + 1] = b[i] * c[i + 1] + b[i + 1] * c[i];
   }
 }
 
 /********************* routine 5 ***********************/
 
 // in the following, size can have any positive value
-void partA_routine5(unsigned char * restrict a,
-		    unsigned char * restrict b, int size) {
-  for ( int i = 0; i < size; i++ ) {
+void partA_routine5(unsigned char *restrict a,
+                    unsigned char *restrict b, int size)
+{
+  for (int i = 0; i < size; i++)
+  {
     a[i] = b[i];
   }
 }
 
-void partA_vectorized5(unsigned char * restrict a,
-		       unsigned char * restrict b, int size) {
+void partA_vectorized5(unsigned char *restrict a,
+                       unsigned char *restrict b, int size)
+{
   // replace the following code with vectorized code
-  for ( int i = 0; i < size; i++ ) {
+  for (int i = 0; i < size; i++)
+  {
     a[i] = b[i];
   }
 }
 
 /********************* routine 6 ***********************/
 
-void partA_routine6(float * restrict a, float * restrict b,
-		       float * restrict c) {
+void partA_routine6(float *restrict a, float *restrict b,
+                    float *restrict c)
+{
   a[0] = 0.0;
-  for ( int i = 1; i < 1023; i++ ) {
+  for (int i = 1; i < 1023; i++)
+  {
     float sum = 0.0;
-    for ( int j = 0; j < 3; j++ ) {
-      sum = sum +  b[i+j-1] * c[j];
+    for (int j = 0; j < 3; j++)
+    {
+      sum = sum + b[i + j - 1] * c[j];
     }
     a[i] = sum;
   }
   a[1023] = 0.0;
 }
 
-void partA_vectorized6(float * restrict a, float * restrict b,
-		       float * restrict c) {
+void partA_vectorized6(float *restrict a, float *restrict b,
+                       float *restrict c)
+{
   // replace the following code with vectorized code
   a[0] = 0.0;
-  for ( int i = 1; i < 1023; i++ ) {
+  for (int i = 1; i < 1023; i++)
+  {
     float sum = 0.0;
-    for ( int j = 0; j < 3; j++ ) {
-      sum = sum +  b[i+j-1] * c[j];
+    for (int j = 0; j < 3; j++)
+    {
+      sum = sum + b[i + j - 1] * c[j];
     }
     a[i] = sum;
   }
   a[1023] = 0.0;
 }
-
-
-
