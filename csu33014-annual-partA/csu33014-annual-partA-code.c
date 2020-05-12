@@ -156,7 +156,7 @@ void partA_vectorized3(float *restrict a, float *restrict b, int size)
     b4 = _mm_loadu_ps(&b[i]);
     // if a[i] < 0, we need to store b[i]
     less4 = _mm_cmplt_ps(a4, zero4);
-    less4 =_mm_and_ps(b4, less4);
+    less4 = _mm_and_ps(b4, less4);
     // if a >= 0, we need to store a[i]
     greater_equal4 = _mm_cmpge_ps(a4, zero4);
     greater_equal4 = _mm_and_ps(a4, greater_equal4);
@@ -192,8 +192,8 @@ void partA_routine4(float *restrict a, float *restrict b,
 void partA_vectorized4(float *restrict a, float *restrict b,
                        float *restrict c)
 {
-   __m128 b4, c4, bshuffle, cshuffle, shuffleproduct;
-   float temp[4] = {0,0,0,0};
+  __m128 b4, c4, bshuffle, cshuffle, shuffleproduct;
+  float temp[4] = {0, 0, 0, 0};
   // replace the following code with vectorized code
   for (int i = 0; i < 2048; i = i + 2)
   {
@@ -217,7 +217,7 @@ void partA_vectorized4(float *restrict a, float *restrict b,
     _mm_storeu_ps(&temp[0], shuffleproduct);
 
     a[i] = temp[0] - temp[1];
-    a[i+1] = temp[2] + temp[3];
+    a[i + 1] = temp[2] + temp[3];
   }
 }
 
@@ -227,7 +227,6 @@ void partA_vectorized4(float *restrict a, float *restrict b,
 void partA_routine5(unsigned char *restrict a,
                     unsigned char *restrict b, int size)
 {
-  __m128 a4, b4;
   for (int i = 0; i < size; i++)
   {
     a[i] = b[i];
@@ -237,8 +236,15 @@ void partA_routine5(unsigned char *restrict a,
 void partA_vectorized5(unsigned char *restrict a,
                        unsigned char *restrict b, int size)
 {
-  // replace the following code with vectorized code
-  for (int i = 0; i < size; i++)
+  __m128 a4, b4;
+  int size_remainder = size % 4; // the remaining of number of elements after our vectorized runs
+  for (int i = 0; i < size - size_remainder; i += 4)
+  {
+    // a[i] = b[i];
+    b4 = _mm_loadu_ps(&b[i]);
+    _mm_storeu_ps(&a[i], b4);
+  }
+  for (int i = size - size_remainder; i < size; i++)
   {
     a[i] = b[i];
   }
