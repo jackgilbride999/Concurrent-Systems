@@ -192,11 +192,32 @@ void partA_routine4(float *restrict a, float *restrict b,
 void partA_vectorized4(float *restrict a, float *restrict b,
                        float *restrict c)
 {
+   __m128 b4, c4, bshuffle, cshuffle, shuffleproduct;
+   float temp[4] = {0,0,0,0};
   // replace the following code with vectorized code
   for (int i = 0; i < 2048; i = i + 2)
   {
-    a[i] = b[i] * c[i] - b[i + 1] * c[i + 1];
-    a[i + 1] = b[i] * c[i + 1] + b[i + 1] * c[i];
+    //a[i] = b[i] * c[i] - b[i + 1] * c[i + 1];
+    //a[i + 1] = b[i] * c[i + 1] + b[i + 1] * c[i];
+
+    // b4 = {b[i+3], b[i+2], b[i+1], b[i]}
+    // c4 = {c[i+3], c[i+2], c[i+1], c[i]}
+    b4 = _mm_loadu_ps(&b[i]);
+    c4 = _mm_loadu_ps(&c[i]);
+
+    // bshuffle = {b[i+1], b[i], b[i+1], b[i]}
+    // cshuffle = {c[i], c[i+1], c[i+1], c[i]}
+    bshuffle = _mm_shuffle_ps(b4, b4, _MM_SHUFFLE(1, 0, 1, 0));
+    cshuffle = _mm_shuffle_ps(c4, c4, _MM_SHUFFLE(0, 1, 1, 0));
+
+    // shuffle product = {b[i+1]*c[i], b[i]*c[i+1], b[i+1]*c[i+1], b[i]*c[i]}
+    shuffleproduct = _mm_mul_ps(bshuffle, cshuffle);
+
+    // temp = {b[i]*c[i], b[i+1]*c[i+1], b[i]*c[i+1], b[i+1]*c[i]}
+    _mm_storeu_ps(&temp[0], shuffleproduct);
+
+    a[i] = temp[0] - temp[1];
+    a[i+1] = temp[2] + temp[3];
   }
 }
 
@@ -206,6 +227,7 @@ void partA_vectorized4(float *restrict a, float *restrict b,
 void partA_routine5(unsigned char *restrict a,
                     unsigned char *restrict b, int size)
 {
+  __m128 a4, b4;
   for (int i = 0; i < size; i++)
   {
     a[i] = b[i];
