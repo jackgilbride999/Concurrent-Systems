@@ -165,7 +165,7 @@ void partA_vectorized3(float *restrict a, float *restrict b, int size)
     // write vector contents to memory
     _mm_storeu_ps(&a[i], b4);
   }
-  // replace the following code with vectorized code
+  // for the reamining 0, 1, 2 or 3 products between size+size_remainder and size
   for (i = size - size_remainder; i < size; i++)
   {
     if (a[i] < 0.0)
@@ -236,13 +236,12 @@ void partA_routine5(unsigned char *restrict a,
 void partA_vectorized5(unsigned char *restrict a,
                        unsigned char *restrict b, int size)
 {
-  __m128 a4, b4;
-  int size_remainder = size % 4; // the remaining of number of elements after our vectorized runs
-  for (int i = 0; i < size - size_remainder; i += 4)
+  __m128i_u b4;
+  int size_remainder = size % 16; // the remaining of number of elements after our vectorized runs
+  for (int i = 0; i < size - size_remainder; i += 16)
   {
-    // a[i] = b[i];
-    b4 = _mm_loadu_ps(&b[i]);
-    _mm_storeu_ps(&a[i], b4);
+    b4 =_mm_lddqu_si128((const __m128i_u *)&b[i]);
+    _mm_storeu_si128((__m128i_u *)&a[i], b4);
   }
   for (int i = size - size_remainder; i < size; i++)
   {
@@ -273,14 +272,19 @@ void partA_vectorized6(float *restrict a, float *restrict b,
 {
   // replace the following code with vectorized code
   a[0] = 0.0;
+  __m128 b4, c4, product4;
+  // load c[0] into c4
+  c4 = _mm_loadu_ps(&c[0]);
+  float product[4] = {0,0,0,0};
   for (int i = 1; i < 1023; i++)
   {
-    float sum = 0.0;
-    for (int j = 0; j < 3; j++)
-    {
-      sum = sum + b[i + j - 1] * c[j];
-    }
-    a[i] = sum;
+    // load b[i-1] into b4
+    b4 = _mm_loadu_ps(&b[i-1]);
+    // multiply b4 by c4
+    product4 = _mm_mul_ps(b4, c4);
+    // put the sum of the first 3 products in a[i]
+    _mm_storeu_ps(&product[0], product4);
+    a[i] = (product[0] + product[1]) + product[2];
   }
   a[1023] = 0.0;
 }
