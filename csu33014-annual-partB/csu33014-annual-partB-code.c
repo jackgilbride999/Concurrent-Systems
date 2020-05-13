@@ -11,6 +11,43 @@
 #include "csu33014-annual-partB-person.h"
 #include <time.h>
 
+struct queue {
+  int front;
+  int rear;
+  int size;
+  int capacity;
+  struct person ** people;
+};
+
+void enqueue(struct queue * queue, struct person * person){
+  if(queue->size == queue-> capacity){
+    assert(false);
+  }
+  queue -> rear = (queue->rear + 1) % queue -> capacity;
+  queue -> people[queue -> rear] = person;
+  queue -> size = queue -> size + 1;
+}
+
+struct person * dequeue(struct queue * queue){
+    if(queue->size == 0){
+      assert(false);
+    }
+  struct person * person = queue -> people[queue->front];
+  queue -> front = (queue -> front + 1)%queue->capacity;
+  queue -> size = queue -> size - 1;
+  return person;
+}
+
+struct queue * new_queue(int capacity){
+  struct queue * queue = malloc(sizeof(struct queue));
+  queue -> capacity = capacity;
+  queue -> size = 0;
+  queue -> front = 0;
+  queue -> rear = capacity - 1;
+  queue -> people = malloc(queue->capacity * sizeof(struct person *));
+  return queue;
+}
+
 void find_reachable_recursive(struct person * current, int steps_remaining,
 			      bool * reachable) {
   // mark current root person as reachable
@@ -65,8 +102,13 @@ int number_within_k_degrees(struct person * start, int total_people, int k) {
   less_redundant_number_within_k_degrees. [15 marks]
 */
 
+/*
+
+
+*/
+
 void find_reachable_reduced_recursive(struct person * current, int k, int steps_remaining,
-			      bool * reachable, bool * visited, int * reachable_steps) {
+			      bool * reachable, bool * visited, int * reachable_steps, struct queue * queue) {
   // mark current root person as reachable
   int current_index = person_get_index(current);
   reachable[current_index] = true;
@@ -77,12 +119,14 @@ void find_reachable_reduced_recursive(struct person * current, int k, int steps_
     int num_known = person_get_num_known(current);
     for ( int i = 0; i < num_known; i++ ) {
       struct person * acquaintance = person_get_acquaintance(current, i);
+      //enqueue(queue, acquaintance);
       int acquaintance_index = person_get_index(acquaintance);
       // if the acquaintance has already been visited, and the number of steps to it is lower than our current number to it,
       // then we will not carry out any updates on this recursive branch, so we don't take it
-      if(!visited[acquaintance_index] || (visited[acquaintance_index] && (k-(steps_remaining-1) < reachable_steps[acquaintance_index]))   )
+      if(!visited[acquaintance_index] || (visited[acquaintance_index] && (k-(steps_remaining-1) < reachable_steps[acquaintance_index])))
       {
-        find_reachable_reduced_recursive(acquaintance, k, steps_remaining-1, reachable, visited, reachable_steps);
+        //find_reachable_reduced_recursive(acquaintance, k, steps_remaining-1, reachable, visited, reachable_steps, queue);
+        enqueue(queue, acquaintance);
       }
     }
   }
@@ -92,33 +136,40 @@ void find_reachable_reduced_recursive(struct person * current, int k, int steps_
 // less repeated computation than the simple original version
 int less_redundant_number_within_k_degrees(struct person * start,
 					   int total_people, int k) {
-  bool * reachable;
-  int count;
-  bool * visited;         // to mark whether a person has already been visited by the algorithm
-  int * reachable_steps;  // to mark how many steps a person is known to be reachable by, if they have been marked as reachable
+  int count = 0;
+  int * depths;         // to mark whether a person has already been visited by the algorithm
+  struct queue * queue;
+  int depth;
 
-  // maintain a boolean flag for each person indicating if they are reachable
-  reachable = malloc(sizeof(bool)*total_people);
-  visited = malloc(sizeof(bool)*total_people);
-  reachable_steps = malloc(sizeof(int)*total_people);
+  depths = malloc(sizeof(int)*total_people);
+  queue = new_queue(total_people);
   for ( int i = 0; i < total_people; i++ ) {
-    reachable[i] = false;
-    visited[i] = false;
-    reachable_steps[i] = 0;
+    depths[i] = -1;
   }
 
   // now search for all people who are reachable with k steps
-  find_reachable_reduced_recursive(start, k, k, reachable, visited, reachable_steps);
+  enqueue(queue, start);
+  depth = depths[person_get_index(start)] = 0;
 
-  // all visited people are marked reachable, so count them
-  count = 0;
-  for ( int i = 0; i < total_people; i++ ) {
-    if ( reachable[i] == true ) {
-      count++;
+  while(queue -> size != 0){
+    struct person * current = dequeue(queue);
+    int current_index = person_get_index(current);
+    depth = depths[current_index];
+    count++;
+    int num_known = person_get_num_known(current);
+    if(depths[current_index] < k) {
+      for (int i = 0; i < num_known; i++ ) {
+        struct person * acquaintance = person_get_acquaintance(current, i);
+        int acquaintance_index = person_get_index(acquaintance);
+        if(depths[acquaintance_index] == -1)
+        {
+          enqueue(queue, acquaintance);
+          depths[acquaintance_index] = depths[current_index] + 1;
+        }
+      }
     }
   }
   return count;
-  
   }
 
 
