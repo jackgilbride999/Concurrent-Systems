@@ -179,10 +179,3 @@ int parallel_number_within_k_degrees(struct person * start,
 				     int total_people, int k) {
   return number_within_k_degrees(start, total_people, k);
 }
-
-
-
-
-
-
-

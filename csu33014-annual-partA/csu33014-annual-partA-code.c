@@ -194,7 +194,6 @@ void partA_vectorized4(float *restrict a, float *restrict b,
 {
   __m128 b4, c4, bshuffle, cshuffle, shuffleproduct;
   float temp[4] = {0, 0, 0, 0};
-  // replace the following code with vectorized code
   for (int i = 0; i < 2048; i = i + 2)
   {
     //a[i] = b[i] * c[i] - b[i + 1] * c[i + 1];
@@ -236,8 +235,13 @@ void partA_routine5(unsigned char *restrict a,
 void partA_vectorized5(unsigned char *restrict a,
                        unsigned char *restrict b, int size)
 {
+  // in this function we are simply moving chars, not operating on them
+  // a char takes up one byte, an integer takes up four bytes
+  // if we let the vector instrcutions read the array like an integer
+  // array, we can move 4 4-byte values at a time, or 16 bytes at a time,
+  // meaning 16 char values can be moved at a time
   __m128i_u b4;
-  int size_remainder = size % 16; // the remaining of number of elements after our vectorized runs
+  int size_remainder = size % 16; 
   for (int i = 0; i < size - size_remainder; i += 16)
   {
     b4 =_mm_lddqu_si128((const __m128i_u *)&b[i]);
@@ -270,7 +274,6 @@ void partA_routine6(float *restrict a, float *restrict b,
 void partA_vectorized6(float *restrict a, float *restrict b,
                        float *restrict c)
 {
-  // replace the following code with vectorized code
   a[0] = 0.0;
   __m128 b4, c4, product4;
   // load c[0] into c4
@@ -278,11 +281,13 @@ void partA_vectorized6(float *restrict a, float *restrict b,
   float product[4] = {0,0,0,0};
   for (int i = 1; i < 1023; i++)
   {
-    // load b[i-1] into b4
+    // load b[i + 0 - 1] to b[i + 2 - 1] into a b4
     b4 = _mm_loadu_ps(&b[i-1]);
-    // multiply b4 by c4
+    // multiply values in b4 all by c
     product4 = _mm_mul_ps(b4, c4);
-    // put the sum of the first 3 products in a[i]
+    // put the sum of the first 3 products in a[i] n the same order 
+    // as the sequential code so the answer is the same (we can simply ignore the 
+    // fourth value)
     _mm_storeu_ps(&product[0], product4);
     a[i] = (product[0] + product[1]) + product[2];
   }
