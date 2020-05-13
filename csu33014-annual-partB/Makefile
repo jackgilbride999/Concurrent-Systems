@@ -8,4 +8,7 @@ sanitize: csu33014-annual-partB-code.c  csu33014-annual-partB-main.c  csu33014-a
 	gcc -g  -fsanitize=address-o graph csu33014-annual-partB-code.c  csu33014-annual-partB-main.c  csu33014-annual-partB-person.c
 
 test: all
-	./graph
+	./graph 500 8
+
+time: all
+	./graph 800000 10
