@@ -199,6 +199,33 @@ int less_redundant_number_within_k_degrees(struct person * start,
     in parallel_number_within_k_degrees. [35 marks]
 */
 
+/*
+    The bfs implementation is inherently difficult to parallelize. Theouter while loop cannot
+    be broken into parallel iterations as each iteration depends on the last (we process
+    nodes at level n after finding them as acquaintances of those at level n-1 in the previous
+    iteration). We can parallelize the inner loop for processing individual acquaintances 
+    of the current node, but the majority of this process is interacting with the person queue
+    and depths array. These are critical sections which cannot be interacted with in parallel
+    as threads would overwrite the results of other threads in the data structures. As the 
+    majority of the threads would not be in parallel, this would just lead to unnecessary 
+    overhead creating threads and significantly slow down the program.
+    We can alter bfs so that we can divide the workload another way; divide each level (where 
+    a level is a group of nodes at some distance n from start). We can parallelize the expansion 
+    of nodes at level n to find all those at n+1, then parallelize the expansion of level n+1,
+    etc. Parallelizing a loop for levels rather than nodes means less, larger jobs running in 
+    parallel, meaning more time is spent running parallel code and less is spent on overhead. 
+    This also means critical sections are a smaller percentage of each parallel job, meaning 
+    an increase in the ratio of parallel jobs running to waiting. To do this we empty the queue 
+    into an array after every iteration of the while loop (i.e. after expanding every level). 
+    For a given iteration (level), the array contains all nodes at that level, and the number 
+    of values is known. We can therefore apply a parallel for loop to split the workload of 
+    this for loop among threads. 
+    Where N is the number of nodes reachable within k degrees, O(N) is the complexity of the original
+    optimization. Here, for every k, we divide the workload by P, so the new complexity is O(N/P).
+    In practise the runtime will be lower than N/P, as there is overhead in creating and joining the
+    threads, and threads must wait on each other during critical sections.
+*/
+
 // computes the number of people within k degrees of the start person;
 // parallel version of the code
 int parallel_number_within_k_degrees(struct person * start,
@@ -214,7 +241,6 @@ int parallel_number_within_k_degrees(struct person * start,
   memset(depths, -1, sizeof(int)*total_people);
   depths[person_get_index(start)] = 0;
 
-
   // initalize the queue to hold the people to allow for breadth-first search
   // the start person is at the head of the queue
   queue = new_queue(total_people);
@@ -222,7 +248,7 @@ int parallel_number_within_k_degrees(struct person * start,
 
   int current_depth = 0;
   int count = 0;
-  while(queue -> size != 0){
+  while(queue -> size != 0) {
 
     // move all people on this level into an array
     int level_size = queue->size;
