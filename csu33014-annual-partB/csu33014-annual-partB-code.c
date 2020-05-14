@@ -13,6 +13,7 @@
 #include <string.h>
 #include <omp.h>
 
+// queue structure for breadth-first search of people
 struct queue {
   int front;
   int rear;
@@ -21,12 +22,14 @@ struct queue {
   struct person ** people;
 };
 
+// add a person to the rear of the queue and update struct variables accordingly
 void enqueue(struct queue * queue, struct person * person){
   queue -> rear = (queue->rear + 1) % queue -> capacity;
   queue -> people[queue -> rear] = person;
   queue -> size = queue -> size + 1;
 }
 
+// take a person from the front of the queue and update struct variables accordingly
 struct person * dequeue(struct queue * queue){
   struct person * person = queue -> people[queue->front];
   queue -> front = (queue -> front + 1)%queue->capacity;
@@ -34,6 +37,7 @@ struct person * dequeue(struct queue * queue){
   return person;
 }
 
+// create a new queue data structures
 struct queue * new_queue(int capacity){
   struct queue * queue = malloc(sizeof(struct queue));
   queue -> capacity = capacity;
@@ -81,22 +85,6 @@ int number_within_k_degrees(struct person * start, int total_people, int k) {
   }
   return count;
 }
-
-
-/*
-  Part B.1: the simple function number_within_k_degrees performs a lot 
-  of redundant work because it visits the same nodes of the graph again 
-  and again, even though they may have already been visited. Please 
-  write a new version of the function that reduces or eliminates the 
-  amount of redundant work. Please provide a very large (perhaps a page) 
-  comment with the function explaining your algorithm for reducing 
-  redundant visits, the complexity of your new algorithm, and the 
-  complexity of the original algorithm in number_within_k_degrees. 
-  Please feel free to upload supplemental material, such as drawings or 
-  a PDF, if you think it would help to explain your solution and the 
-  complexity. Your new function should replace the code in  
-  less_redundant_number_within_k_degrees. [15 marks]
-*/
 
 /*
   The reduced redundancy function carries out breath-first search (bfs) for
@@ -186,20 +174,6 @@ int less_redundant_number_within_k_degrees(struct person * start,
 }
 
 /*
-    Part B.2, write an efficient parallel implementation of your function that reduces 
-    the amount of redundant work from Part B.1. You should write the parallel function 
-    using OpenMP or pthreads. If it is difficult to parallelize your algorithm that 
-    reduces redundancy, then please explain why it is difficult to parallelize, and 
-    instead provide a parallel version of another reduced-redundancy algorithm, or the 
-    original algorithm. Please provide a very large (perhaps a page) comment with the 
-    function explaining your parallelization strategy and algorithm, and the complexity 
-    of your algorithm if there are P parallel processing cores. Please feel free to 
-    upload supplemental material, such as drawings or a PDF, if you think it would help 
-    to explain your solution and the complexity. Your new function should replace the code 
-    in parallel_number_within_k_degrees. [35 marks]
-*/
-
-/*
     The bfs implementation is inherently difficult to parallelize. Theouter while loop cannot
     be broken into parallel iterations as each iteration depends on the last (we process
     nodes at level n after finding them as acquaintances of those at level n-1 in the previous
@@ -234,17 +208,26 @@ int parallel_number_within_k_degrees(struct person * start,
   int * depths;
   struct queue * queue;
 
-  // initalize the array to hold the depths of each person from the start node
-  // depth[index] == -1 indicates that the person has not been found yet
-  // the depth of the start person is 0
-  depths = malloc(sizeof(int)*total_people);
-  memset(depths, -1, sizeof(int)*total_people);
-  depths[person_get_index(start)] = 0;
+  #pragma omp parallel sections
+  {
+    // initalize the array to hold the depths of each person from the start node
+    // depth[index] == -1 indicates that the person has not been found yet
+    // the depth of the start person is 0
+    #pragma omp section
+    {
+      depths = malloc(sizeof(int)*total_people);
+      memset(depths, -1, sizeof(int)*total_people);
+      depths[person_get_index(start)] = 0;
+    }
 
-  // initalize the queue to hold the people to allow for breadth-first search
-  // the start person is at the head of the queue
-  queue = new_queue(total_people);
-  enqueue(queue, start);
+    // initalize the queue to hold the people to allow for breadth-first search
+    // the start person is at the head of the queue
+    #pragma omp section
+    {
+      queue = new_queue(total_people);
+      enqueue(queue, start);
+    }
+  }
 
   int current_depth = 0;
   int count = 0;
