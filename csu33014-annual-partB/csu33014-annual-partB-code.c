@@ -11,6 +11,7 @@
 #include "csu33014-annual-partB-person.h"
 #include <time.h>
 #include <string.h>
+#include <omp.h>
 
 struct queue {
   int front;
@@ -238,7 +239,10 @@ int parallel_number_within_k_degrees(struct person * start,
         // if they have been found, then they have/will be expanded so no need to expand again
         if(depths[acquaintance_index] == -1)
         {
-          enqueue(queue, acquaintance);
+          #pragma omp critical
+          {
+            enqueue(queue, acquaintance);
+          }
           depths[acquaintance_index] = depths[current_index] + 1;
         }
       }
