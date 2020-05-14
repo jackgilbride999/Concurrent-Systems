@@ -22,18 +22,12 @@ struct queue {
 };
 
 void enqueue(struct queue * queue, struct person * person){
-  if(queue->size == queue-> capacity){
-    assert(false);
-  }
   queue -> rear = (queue->rear + 1) % queue -> capacity;
   queue -> people[queue -> rear] = person;
   queue -> size = queue -> size + 1;
 }
 
 struct person * dequeue(struct queue * queue){
-    if(queue->size == 0){
-      assert(false);
-    }
   struct person * person = queue -> people[queue->front];
   queue -> front = (queue -> front + 1)%queue->capacity;
   queue -> size = queue -> size - 1;
@@ -209,44 +203,62 @@ int less_redundant_number_within_k_degrees(struct person * start,
 // parallel version of the code
 int parallel_number_within_k_degrees(struct person * start,
 				     int total_people, int k) {
+
+  int * depths;
+  struct queue * queue;
+
   // initalize the array to hold the depths of each person from the start node
   // depth[index] == -1 indicates that the person has not been found yet
   // the depth of the start person is 0
-  int * depths = malloc(sizeof(int)*total_people);
+  depths = malloc(sizeof(int)*total_people);
   memset(depths, -1, sizeof(int)*total_people);
   depths[person_get_index(start)] = 0;
 
+
   // initalize the queue to hold the people to allow for breadth-first search
   // the start person is at the head of the queue
-  struct queue * queue = new_queue(total_people);
+  queue = new_queue(total_people);
   enqueue(queue, start);
 
+  int current_depth = 0;
   int count = 0;
   while(queue -> size != 0){
-    // dequeue another person and include them in the count
-    struct person * current = dequeue(queue);
-    count++;
-    int current_index = person_get_index(current);
-    // only expand the current node if its depth is less than k
-    if(depths[current_index] < k) {
-      // get each acquaintance of the current person
-      int num_known = person_get_num_known(current);
-      #pragma omp parallel for
-      for (int i = 0; i < num_known; i++ ) {
-        struct person * acquaintance = person_get_acquaintance(current, i);
-        int acquaintance_index = person_get_index(acquaintance);
-        // only enqueue the acquaintance if they haven't been found already
-        // if they have been found, then they have/will be expanded so no need to expand again
-        if(depths[acquaintance_index] == -1)
-        {
+
+    // move all people on this level into an array
+    int level_size = queue->size;
+    struct person ** level = malloc(level_size * sizeof(struct person *));
+    for(int i = 0; i < level_size; i++){
+      level[i] = dequeue(queue);
+    }
+
+    int acquaintance_depth = current_depth + 1;
+    #pragma omp parallel for reduction(+:count)
+    for(int i = 0; i < level_size; i++){
+      // dequeue another person and include them in the count
+      struct person * current = level[i];
+      count++;
+      int current_index = person_get_index(current);
+      // only expand the current node if its depth is less than k
+      if(depths[current_index] < k) {
+        // get each acquaintance of the current person
+        int num_known = person_get_num_known(current);
+        for (int i = 0; i < num_known; i++ ) {
+          struct person * acquaintance = person_get_acquaintance(current, i);
+          int acquaintance_index = person_get_index(acquaintance);
+          // only enqueue the acquaintance if they haven't been found already
+          // if they have been found, then they have/will be expanded so no need to expand again
           #pragma omp critical
           {
-            enqueue(queue, acquaintance);
+            if(depths[acquaintance_index] == -1)
+            {
+              enqueue(queue, acquaintance);
+              depths[acquaintance_index] = acquaintance_depth;
+            }
           }
-          depths[acquaintance_index] = depths[current_index] + 1;
         }
       }
     }
+    current_depth ++;
   }
-  return count;  
+  return count;
 }
