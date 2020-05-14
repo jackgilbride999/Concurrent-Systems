@@ -6,6 +6,8 @@
 *.ko
 *.obj
 *.elf
+graph
+vec
 
 # Linker output
 *.ilk
